@@ -2,15 +2,14 @@ import os
 import time
 import streamlit as st
 from dotenv import load_dotenv
-import google.generativeai as gen_ai
-
+from google import genai
 
 # Load environment variables
 load_dotenv()
 
-# Configure Streamlit page settings
+# Configure Streamlit page
 st.set_page_config(
-    page_title="Chat with Gemini-Pro!",
+    page_title="Chat with Gemini!",
     page_icon=":brain:",
     layout="centered",
 )
@@ -18,62 +17,49 @@ st.set_page_config(
 # Get API Key
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-# Configure Gemini
-gen_ai.configure(api_key=GOOGLE_API_KEY)
-
-model = gen_ai.GenerativeModel(
-    model_name="gemini-2.5-flash",
-    generation_config={
-        "temperature": 0.5,
-        "max_output_tokens": 256
-    }
-)
-
-# Translate role names
-def translate_role_for_streamlit(user_role):
-    if user_role == "model":
-        return "assistant"
-    return user_role
-
-
-# Initialize chat session
-if "chat_session" not in st.session_state:
-    st.session_state.chat_session = model.start_chat(history=[])
-
+# Create Gemini client (NEW WAY)
+client = genai.Client(api_key=GOOGLE_API_KEY)
 
 # Page title
-st.title("🤖 Gemini Pro - ChatBot")
+st.title("🤖 Gemini ChatBot")
 
+# Initialize chat history manually
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
 
 # Display chat history
-for message in st.session_state.chat_session.history:
-    with st.chat_message(translate_role_for_streamlit(message.role)):
-        st.markdown(message.parts[0].text)
-
+for role, message in st.session_state.chat_history:
+    with st.chat_message(role):
+        st.markdown(message)
 
 # User input
-user_prompt = st.chat_input("Ask Gemini-Pro...")
+user_prompt = st.chat_input("Ask Gemini...")
 
 if user_prompt:
     # Show user message
     st.chat_message("user").markdown(user_prompt)
+    st.session_state.chat_history.append(("user", user_prompt))
 
-    # Assistant response area
+    # Assistant response
     with st.chat_message("assistant"):
         with st.spinner("Gemini is thinking..."):
 
             response = None
 
-            # 🔁 RETRY LOGIC (Step 3)
+            # Retry logic
             for attempt in range(2):
                 try:
-                    response = st.session_state.chat_session.send_message(user_prompt)
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=user_prompt,
+                    )
                     break
                 except Exception:
-                    time.sleep(2)  # wait 2 seconds and retry
+                    time.sleep(2)
 
-            # If successful
             if response:
-                st.markdown(response.text)
+                reply = response.text
+                st.markdown(reply)
+                st.session_state.chat_history.append(("assistant", reply))
             else:
                 st.error("⚠️ Gemini is currently unavailable. Please try again later.")
