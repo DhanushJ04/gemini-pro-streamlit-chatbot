@@ -15,7 +15,7 @@ st.set_page_config(
 )
 
 # Get API Key
-GOOGLE_API_KEY = st.secrets("GOOGLE_API_KEY")
+GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 
 # Create Gemini client (NEW WAY)
 client = genai.Client(api_key=GOOGLE_API_KEY)
